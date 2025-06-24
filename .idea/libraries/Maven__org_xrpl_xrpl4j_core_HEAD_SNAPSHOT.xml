@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.xrpl:xrpl4j-core:HEAD-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xrpl/xrpl4j-core/HEAD-SNAPSHOT/xrpl4j-core-HEAD-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xrpl/xrpl4j-core/HEAD-SNAPSHOT/xrpl4j-core-HEAD-SNAPSHOT-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xrpl/xrpl4j-core/HEAD-SNAPSHOT/xrpl4j-core-HEAD-SNAPSHOT-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

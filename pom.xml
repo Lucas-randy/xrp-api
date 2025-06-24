@@ -4,7 +4,6 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>com.example</groupId>
     <artifactId>xrp-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -18,13 +17,32 @@
     </parent>
 
     <dependencies>
-        <!-- Dépendance pour Spring Web -->
+        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Autres dépendances à ajouter ici si nécessaire -->
+        <!-- xrpl4j-core -->
+        <dependency>
+            <groupId>org.xrpl</groupId>
+            <artifactId>xrpl4j-core</artifactId>
+            <version>HEAD-SNAPSHOT</version>
+        </dependency>
+
+        <!-- xrpl4j-client -->
+        <dependency>
+            <groupId>org.xrpl</groupId>
+            <artifactId>xrpl4j-client</artifactId>
+            <version>HEAD-SNAPSHOT</version>
+        </dependency>
+
+        <!-- OkHttp required by XrplClient -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.9.3</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -35,5 +53,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
