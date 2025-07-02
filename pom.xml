@@ -4,6 +4,7 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.example</groupId>
     <artifactId>xrp-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -13,36 +14,93 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.2.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.github.XRPLF.xrpl4j</groupId>
+                <artifactId>xrpl4j-bom</artifactId>
+                <version>v4.0.4</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- Spring Boot Web -->
+        <!-- ✅ Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- xrpl4j-core -->
+        <!-- ✅ Spring Boot JPA -->
         <dependency>
-            <groupId>org.xrpl</groupId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- ✅ Spring Boot Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+
+        <!-- ✅ JWT Authentication -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>0.9.1</version>
+        </dependency>
+
+
+        <!-- ✅ PostgreSQL driver -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.3</version>
+        </dependency>
+
+        <!-- ✅ xrpl4j -->
+        <dependency>
+            <groupId>com.github.XRPLF.xrpl4j</groupId>
             <artifactId>xrpl4j-core</artifactId>
-            <version>HEAD-SNAPSHOT</version>
         </dependency>
 
-        <!-- xrpl4j-client -->
         <dependency>
-            <groupId>org.xrpl</groupId>
+            <groupId>com.github.XRPLF.xrpl4j</groupId>
             <artifactId>xrpl4j-client</artifactId>
-            <version>HEAD-SNAPSHOT</version>
         </dependency>
 
-        <!-- OkHttp required by XrplClient -->
+        <!-- ✅ OkHttp -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>4.9.3</version>
         </dependency>
+
+        <!-- ✅ Stellar SDK -->
+        <dependency>
+            <groupId>com.github.stellar</groupId>
+            <artifactId>java-stellar-sdk</artifactId>
+            <version>0.31.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -50,7 +108,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>
+
 </project>

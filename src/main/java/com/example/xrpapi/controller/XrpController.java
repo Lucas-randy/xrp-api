@@ -13,6 +13,9 @@ public class XrpController {
     @Autowired
     private XrpService xrpService;
 
+    /*
+    * http://localhost:8080/api/xrp/account/rKKanvN1F68KRmGQD26dH7UzrWoZruRXyP
+    * */
     @GetMapping("/account/{address}")
     public ResponseEntity<?> getAccountInfo(@PathVariable String address) {
         try {
