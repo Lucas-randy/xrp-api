@@ -3,7 +3,11 @@ package com.example.xrpapi.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
+@Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
@@ -12,7 +16,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // OK pour test
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/stellar/create").permitAll()
-                        .requestMatchers("/stellar/send").permitAll()  // ✅ autorise explicitement /send
+                        .requestMatchers("/stellar/**").permitAll()  // ✅ autorise explicitement /send
                         .requestMatchers("/stellar/secret/**").authenticated()
                         .anyRequest().permitAll()
                 )

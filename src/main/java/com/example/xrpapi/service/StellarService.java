@@ -24,6 +24,7 @@ import org.stellar.sdk.AssetTypeNative;
 import org.stellar.sdk.PaymentOperation;
 
 import org.stellar.sdk.requests.PaymentsRequestBuilder;
+import org.stellar.sdk.responses.operations.OperationResponse;
 import org.stellar.sdk.responses.operations.PaymentOperationResponse;
 
 @Service
@@ -82,7 +83,7 @@ public class StellarService {
         return CryptoUtil.decrypt(wallet.getEncryptedSecret(), encryptionKey);
     }
 
-    public String sendXLM(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+   /* public String sendXLM(String fromPublicKey, String toPublicKey, String amount) throws Exception {
         KeyPair source = KeyPair.fromSecretSeed(getSecret(fromPublicKey)); // Déchiffre d'abord
         KeyPair destination = KeyPair.fromAccountId(toPublicKey);
 
@@ -109,7 +110,7 @@ public class StellarService {
         System.out.println("🔔 Horizon Extras : " + response.getExtras());
 
         return response.isSuccess() ? "✅ Tx Hash: " + response.getHash() : response.getExtras().getResultCodes().toString();
-    }
+    }*/
 
     //Générer une clé AES pour crypter la seed
     public SecretKey generateAesKey() throws Exception {
@@ -142,25 +143,69 @@ public class StellarService {
         return sb.toString();
     }
 
+    public String sendXLM(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+        System.out.println("🔵 Début de sendXLM");
+        try {
+            System.out.println("🔵 Création des KeyPairs");
+            KeyPair source = KeyPair.fromSecretSeed(getSecret(fromPublicKey));
+            KeyPair destination = KeyPair.fromAccountId(toPublicKey);
+
+            System.out.println("🔵 Connexion au serveur Stellar");
+            Server server = new Server("https://horizon-testnet.stellar.org");
+
+            System.out.println("🔵 Chargement du compte source: " + source.getAccountId());
+            AccountResponse sourceAccountResponse = server.accounts().account(source.getAccountId());
+
+            Account sourceAccount = new Account(source.getAccountId(), sourceAccountResponse.getSequenceNumber());
+            System.out.println("🔵 Sequence number: " + sourceAccountResponse.getSequenceNumber());
+
+            System.out.println("🔵 Construction de la transaction");
+            Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                    .addOperation(new PaymentOperation.Builder(destination.getAccountId(),
+                            new AssetTypeNative(), amount).build())
+                    .setTimeout(180)
+                    .setBaseFee(Transaction.MIN_BASE_FEE)
+                    .build();
+
+            System.out.println("🔵 Signature de la transaction");
+            transaction.sign(source);
+
+            System.out.println("🔵 Envoi à Horizon");
+            SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+            System.out.println("🔵 Réponse Horizon: " + response);
+            return response.isSuccess() ? "✅ Tx Hash: " + response.getHash() :
+                    "❌ Erreur: " + response.getExtras().getResultCodes();
+        } catch (Exception e) {
+            System.out.println("🔴 Exception dans sendXLM: " + e);
+            throw e;
+        }
+    }
+
     //Méthode pour intéroger l'historique des paiements en Stellar
     public String getPaymentHistory(String publicKey) throws Exception {
         Server server = new Server("https://horizon-testnet.stellar.org");
 
-        PaymentsRequestBuilder paymentsRequest = server.payments().forAccount(publicKey).limit(10).order(org.stellar.sdk.requests.RequestBuilder.Order.DESC);
+        StringBuilder history = new StringBuilder();
+        history.append("📜 Historique des paiements pour : ").append(publicKey).append("\n");
 
-        StringBuilder sb = new StringBuilder();
-        for (org.stellar.sdk.responses.operations.OperationResponse op : paymentsRequest.execute().getRecords()) {
-            if (op instanceof PaymentOperationResponse) {
-                PaymentOperationResponse payment = (PaymentOperationResponse) op;
-                sb.append("ID: ").append(payment.getId())
-                        .append(" | Type: ").append(payment.getType())
-                        .append(" | From: ").append(payment.getFrom())
-                        .append(" | To: ").append(payment.getTo())
-                        .append(" | Amount: ").append(payment.getAmount())
-                        .append(" | Asset: ").append(payment.getAsset().getType())
+        // On récupère la liste des paiements
+        for (OperationResponse operation : server.payments().forAccount(publicKey).execute().getRecords()) {
+            if (operation instanceof PaymentOperationResponse) {
+                PaymentOperationResponse payment = (PaymentOperationResponse) operation;
+                String from = payment.getFrom();
+                String to = payment.getTo();
+                String asset = payment.getAsset().getType().equals("native") ? "XLM" : payment.getAsset().toString();
+                String amount = payment.getAmount();
+                history.append("De : ").append(from)
+                        .append(" ➜ Vers : ").append(to)
+                        .append(" | Montant : ").append(amount)
+                        .append(" ").append(asset)
                         .append("\n");
             }
         }
-        return sb.toString();
+
+        return history.toString();
     }
+
 }
