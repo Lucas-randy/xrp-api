@@ -14,7 +14,10 @@ public class StellarController {
         this.stellarService = stellarService;
     }
 
-    //Route pour générer un wallet + créer une paire de clés + cryptage
+    /*Route pour générer un wallet + créer une paire de clés + cryptage
+    * curl.exe http://localhost:8080/stellar/create
+
+     * */
     @GetMapping("/create")
     public String createAccount() throws Exception {
         // ➜ Crée une paire de clés + chiffre + stocke + active Friendbot
@@ -25,7 +28,9 @@ public class StellarController {
                 + "(Encrypted secret stored securely)";
     }
 
-    //Route pour décrypter une adresse publique
+    /*Route pour décrypter une adresse publique
+    * curl.exe "http://localhost:8080/stellar/secret/GA2SVBHMBZOVHHPFIRA4577CMKOYTL5OJWNEMDVEXXQ7KUTHVL7VTGE5"
+     * */
     @GetMapping("/secret/{publicKey}")
     public String getDecrypted(@PathVariable String publicKey) throws Exception {
         String seed = stellarService.getSecret(publicKey);
@@ -46,7 +51,8 @@ public class StellarController {
 
     /**
      * ✅ Route POST : Envoi de XLM
-     * Exemple : POST http://localhost:8080/stellar/send?fromPublicKey=...&toPublicKey=...&amount=...
+     * Exemple : curl.exe -X POST "http://localhost:8080/stellar/send?fromPublicKey=GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG&
+     * toPublicKey=GA2SVBHMBZOVHHPFIRA4577CMKOYTL5OJWNEMDVEXXQ7KUTHVL7VTGE5&amount=50"
      */
     @PostMapping("/send")
     public String sendXLM(
@@ -65,5 +71,36 @@ public class StellarController {
             return "❌ Erreur : " + e.getMessage();
         }
     }
+
+    @PostMapping("/swap")
+    public String swapXLMToUSDC(
+            @RequestParam String fromPublicKey,
+            @RequestParam String toPublicKey,
+            @RequestParam String amount) {
+
+        try {
+            System.out.println("🔄 Reçu swap : from=" + fromPublicKey + " to=" + toPublicKey + " amount=" + amount);
+            String result = stellarService.swapXLMtoUSDC(fromPublicKey, toPublicKey, amount);
+            System.out.println("✅ Résultat du swap : " + result);
+            return result;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "❌ Erreur swap : " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/trustline/usdc")
+    public String addTrustlineUSDC(@RequestParam String publicKey) {
+        try {
+            return stellarService.createTrustLineUSDC(publicKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "❌ Erreur : " + e.getMessage();
+        }
+    }
+
+
+
 }
 

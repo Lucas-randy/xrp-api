@@ -3,7 +3,13 @@ package com.example.xrpapi.service;
 import org.springframework.stereotype.Service;
 import com.example.xrpapi.entity.Wallet;
 import com.example.xrpapi.repository.WalletRepository;
-import org.stellar.sdk.KeyPair;
+import org.stellar.sdk.*;
+
+import org.stellar.sdk.responses.*;
+import org.stellar.sdk.requests.*;
+import org.stellar.sdk.xdr.MemoType;
+
+
 import javax.crypto.SecretKey;
 import okhttp3.Request;
 import okhttp3.OkHttpClient;
@@ -11,17 +17,13 @@ import okhttp3.Response;
 import com.example.xrpapi.util.CryptoUtil;
 import javax.crypto.KeyGenerator;
 
+import org.stellar.sdk.AssetTypeCreditAlphaNum4;
+import org.stellar.sdk.ChangeTrustAsset;
+
 import org.stellar.sdk.responses.AccountResponse;
-import org.stellar.sdk.Transaction;
-import org.stellar.sdk.Account;
 
 import org.stellar.sdk.responses.SubmitTransactionResponse;
-
-import org.stellar.sdk.Server;
-
-import org.stellar.sdk.Network;
-import org.stellar.sdk.AssetTypeNative;
-import org.stellar.sdk.PaymentOperation;
+import org.stellar.sdk.AssetTypeCreditAlphaNum;
 
 import org.stellar.sdk.requests.PaymentsRequestBuilder;
 import org.stellar.sdk.responses.operations.OperationResponse;
@@ -207,5 +209,104 @@ public class StellarService {
 
         return history.toString();
     }
+
+    //Méthode pour convertir XLM en USDC
+    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+        System.out.println("🔄 Début swap XLM ➜ USDC");
+
+        // Déchiffre la clé secrète de l'envoyeur
+        KeyPair source = KeyPair.fromSecretSeed(getSecret(fromPublicKey));
+        KeyPair destination = KeyPair.fromAccountId(toPublicKey);
+
+        Server server = new Server("https://horizon-testnet.stellar.org");
+
+        // Vérifie que le compte destination existe (optionnel)
+        server.accounts().account(destination.getAccountId());
+
+        // Charge le compte source
+        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+        Account sourceAccountTx = new Account(source.getAccountId(), sourceAccount.getSequenceNumber());
+
+        // Définit l'asset de destination (USDC sur testnet : Circle USDC)
+        Asset usdc = new AssetTypeCreditAlphaNum12(
+                "USDC",
+                "GA5ZSEU5GAC3UQJ5BJYJGBQYY3ZXKXNBHFOKRS67VJYNNZYDW7ZACBZK"  // Ex : Circle USDC Testnet issuer
+        );
+
+        // Crée la transaction PathPaymentStrictSend
+        Transaction transaction = new Transaction.Builder(sourceAccountTx, Network.TESTNET)
+                .addOperation(new PathPaymentStrictSendOperation.Builder(
+                        new AssetTypeNative(), // Envoie XLM
+                        amount,
+                        destination.getAccountId(),
+                        usdc,
+                        "0.01" // minAmount : peut être ajusté
+                ).build())
+                .setTimeout(180)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build();
+
+        // Signe localement
+        transaction.sign(source);
+
+        // Envoie à Horizon
+        SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+        System.out.println("🔄 Swap Submit Response: isSuccess = " + response.isSuccess());
+        System.out.println("🔄 Hash : " + response.getHash());
+
+        return response.isSuccess()
+                ? "✅ Swap OK, Tx Hash: " + response.getHash()
+                : "❌ Swap KO : " + response.getExtras().getResultCodes();
+    }
+
+    public String createTrustLineUSDC(String publicKey) throws Exception {
+        System.out.println("➡️ Début createTrustLineUSDC");
+
+        // Déchiffrer le seed
+        String secret = getSecret(publicKey);
+
+
+        System.out.println("🔑 Decrypted seed : " + secret);
+
+
+
+        KeyPair source = KeyPair.fromSecretSeed(secret);
+
+        Server server = new Server("https://horizon-testnet.stellar.org");
+
+        // Charger le compte
+        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+
+        // Définir l'asset USDC (exemple Circle)
+        AssetTypeCreditAlphaNum4 usdc = new AssetTypeCreditAlphaNum4(
+                "USDC",
+                "GA5ZSEU5GAC3UQJ5BJYJGBQYY3ZXKXNBHFOKRS67VJYNNZYDW7ZACBZK"
+        );
+
+        ChangeTrustAsset trustAsset = ChangeTrustAsset.create(usdc);
+
+        ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, "10000").build();
+
+        Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                .addOperation(operation)
+                .setTimeout(180)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build();
+
+        transaction.sign(source);
+
+        SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+        if (response.isSuccess()) {
+            System.out.println("✅ Trustline ajoutée !");
+            return "✅ Trustline USDC ajoutée";
+        } else {
+            System.out.println("❌ Horizon response : " + response.getExtras().getResultCodes());
+            return "❌ Horizon response : " + response.getExtras().getResultCodes();
+        }
+    }
+
+
 
 }
