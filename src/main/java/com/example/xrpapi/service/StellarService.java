@@ -64,7 +64,7 @@ public class StellarService {
         }
     }
 
-    public Wallet createAndStoreWallet() throws Exception {
+    /*public Wallet createAndStoreWallet() throws Exception {
         KeyPair keyPair = createKeyPair();
         String publicKey = keyPair.getAccountId();
         String secretSeed = new String(keyPair.getSecretSeed());
@@ -77,6 +77,32 @@ public class StellarService {
         fundTestAccount(publicKey);
 
         return wallet;
+    }*/
+    public Wallet createAndStoreWallet() throws Exception {
+        // Génère une nouvelle paire de clés
+        KeyPair keyPair = KeyPair.random();
+
+        // Convertit et VALIDE la seed avant stockage
+        String secretSeed = validateStellarSeed(new String(keyPair.getSecretSeed()));
+
+        // Crypte et sauvegarde
+        String encrypted = CryptoUtil.encrypt(secretSeed, encryptionKey);
+        Wallet wallet = new Wallet(keyPair.getAccountId(), encrypted);
+        walletRepository.save(wallet);
+
+        fundTestAccount(wallet.getPublicKey());
+        return wallet;
+    }
+
+    private String validateStellarSeed(String seed) throws Exception {
+        seed = seed.trim();
+        try {
+            KeyPair.fromSecretSeed(seed); // Valide le checksum
+            System.out.println("✅ Seed validée avec succès");
+            return seed;
+        } catch (Exception e) {
+            throw new Exception("Seed invalide générée : " + seed, e);
+        }
     }
 
     public String getSecret(String publicKey) throws Exception {
@@ -260,7 +286,7 @@ public class StellarService {
                 : "❌ Swap KO : " + response.getExtras().getResultCodes();
     }
 
-    public String createTrustLineUSDC(String publicKey) throws Exception {
+    /*public String createTrustLineUSDC(String publicKey) throws Exception {
         System.out.println("➡️ Début createTrustLineUSDC");
 
         // Déchiffrer le seed
@@ -269,7 +295,12 @@ public class StellarService {
 
         System.out.println("🔑 Decrypted seed : " + secret);
 
-
+        // Validation explicite
+        try {
+            KeyPair.fromSecretSeed(secret); // Lance une exception si la seed est invalide
+        } catch (Exception e) {
+            throw new Exception("Seed corrompue : " + secret + " (longueur : " + secret.length() + ")", e);
+        }
 
         KeyPair source = KeyPair.fromSecretSeed(secret);
 
@@ -304,6 +335,219 @@ public class StellarService {
         } else {
             System.out.println("❌ Horizon response : " + response.getExtras().getResultCodes());
             return "❌ Horizon response : " + response.getExtras().getResultCodes();
+        }
+    }*/
+
+    // Méthode de test pour diagnostiquer le problème
+    public String testDecryption(String publicKey) {
+        try {
+            Wallet wallet = walletRepository.findById(publicKey)
+                    .orElseThrow(() -> new Exception("Portefeuille introuvable"));
+
+            System.out.println("=== DIAGNOSTIC DECRYPTION ===");
+            System.out.println("Public Key: " + publicKey);
+            System.out.println("Encrypted Secret: " + wallet.getEncryptedSecret());
+
+            CryptoUtil.testDecryption(wallet.getEncryptedSecret());
+
+            return "Test de déchiffrement terminé - voir les logs";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur lors du test: " + e.getMessage();
+        }
+    }
+
+    // Méthode pour re-chiffrer une seed si nécessaire
+    public String rechiffreSeed(String publicKey, String newSeed) {
+        try {
+            // Valider la nouvelle seed
+            KeyPair.fromSecretSeed(newSeed);
+
+            // Chiffrer la nouvelle seed
+            String encryptedSeed = CryptoUtil.encrypt(newSeed, encryptionKey);
+
+            // Mettre à jour en base
+            Wallet wallet = walletRepository.findById(publicKey)
+                    .orElseThrow(() -> new Exception("Portefeuille introuvable"));
+
+            wallet.setEncryptedSecret(encryptedSeed);
+            walletRepository.save(wallet);
+
+            return "✅ Seed re-chiffrée avec succès pour " + publicKey;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "❌ Erreur lors du re-chiffrement: " + e.getMessage();
+        }
+    }
+
+    public String createTrustLineUSDC(String publicKey) throws Exception {
+        System.out.println("➡️ Début createTrustLineUSDC pour : " + publicKey);
+
+        try {
+            // Utiliser votre méthode qui fonctionne
+            String secret = getSecret(publicKey);
+            System.out.println("🔑 Secret récupéré avec succès, longueur : " + secret.length());
+
+            // Créer le KeyPair
+            KeyPair source = KeyPair.fromSecretSeed(secret);
+            System.out.println("✅ KeyPair créé : " + source.getAccountId());
+
+            Server server = new Server("https://horizon-testnet.stellar.org");
+            AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+            System.out.println("📊 Compte chargé depuis Horizon");
+
+            // ⚠️ TESTONS DIFFÉRENTES ADRESSES D'ISSUER USDC
+            // Adresse 1 : Circle USDC sur testnet
+            String[] usdcIssuers = {
+                    "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", // Circle testnet
+                    "GBBH5D4BDGBCFCEEN7KMAVVQLXNO55Z2S6V2FPUM4GR34F5MRTSRAAIA", // Alternative 1
+                    "GC7M46P53O23PYQ4U3YSTLBYZJNSYIPQSXVYYEZZ37GLD5FHHTAFNX7C"  // Alternative 2
+            };
+
+            Exception lastException = null;
+
+            for (String issuer : usdcIssuers) {
+                try {
+                    System.out.println("🧪 Test avec issuer : " + issuer);
+
+                    // Valider l'adresse de l'issuer
+                    KeyPair.fromAccountId(issuer);
+                    System.out.println("✅ Adresse issuer valide : " + issuer);
+
+                    // Créer l'asset USDC
+                    AssetTypeCreditAlphaNum4 usdc = new AssetTypeCreditAlphaNum4("USDC", issuer);
+                    ChangeTrustAsset trustAsset = ChangeTrustAsset.create(usdc);
+                    ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, "10000").build();
+
+                    // Construire la transaction
+                    Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                            .addOperation(operation)
+                            .setTimeout(180)
+                            .setBaseFee(Transaction.MIN_BASE_FEE)
+                            .build();
+
+                    transaction.sign(source);
+                    System.out.println("✍️ Transaction signée avec issuer : " + issuer);
+
+                    // Soumettre la transaction
+                    SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+                    if (response.isSuccess()) {
+                        System.out.println("✅ Trustline ajoutée avec succès avec issuer : " + issuer);
+                        return "✅ Trustline USDC ajoutée avec succès (issuer: " + issuer + ")";
+                    } else {
+                        System.out.println("❌ Échec avec issuer " + issuer + " : " + response.getExtras().getResultCodes());
+                        lastException = new Exception("Horizon error: " + response.getExtras().getResultCodes());
+                    }
+
+                } catch (Exception e) {
+                    System.out.println("❌ Erreur avec issuer " + issuer + " : " + e.getMessage());
+                    lastException = e;
+                    continue; // Essayer le suivant
+                }
+            }
+
+            // Si aucun issuer n'a fonctionné
+            throw new Exception("Aucun issuer USDC n'a fonctionné. Dernière erreur : " +
+                    (lastException != null ? lastException.getMessage() : "Inconnue"));
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur dans createTrustLineUSDC : " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+
+
+    // Méthode alternative avec un asset simple pour tester
+    public String createSimpleTrustLine(String publicKey) throws Exception {
+        System.out.println("➡️ Test avec un asset simple");
+
+        try {
+            String secret = getSecret(publicKey);
+            KeyPair source = KeyPair.fromSecretSeed(secret);
+            Server server = new Server("https://horizon-testnet.stellar.org");
+            AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+
+            // Créer un asset de test simple avec une adresse d'issuer valide
+            String testIssuer = "GCKFBEIYTKP5RDBQMU2TQCQHD6TNQTP2JXGMH5UQNXZP6GKXQBGBTB4Q";
+            AssetTypeCreditAlphaNum4 testAsset = new AssetTypeCreditAlphaNum4("TEST", testIssuer);
+
+            ChangeTrustAsset trustAsset = ChangeTrustAsset.create(testAsset);
+            ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, "1000").build();
+
+            Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                    .addOperation(operation)
+                    .setTimeout(180)
+                    .setBaseFee(Transaction.MIN_BASE_FEE)
+                    .build();
+
+            transaction.sign(source);
+            SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+            if (response.isSuccess()) {
+                return "✅ Trustline TEST ajoutée avec succès";
+            } else {
+                return "❌ Erreur : " + response.getExtras().getResultCodes();
+            }
+
+        } catch (Exception e) {
+            throw new Exception("Erreur trustline simple : " + e.getMessage(), e);
+        }
+    }
+
+    // Méthode bonus pour créer une trustline avec un asset personnalisé
+    public String createCustomTrustLine(String publicKey, String assetCode, String issuerAddress, String limit) throws Exception {
+        System.out.println("➡️ Début createCustomTrustLine pour : " + publicKey);
+
+        try {
+            String secret = getSecret(publicKey);
+            validateStellarSeed(secret);
+
+            // Valider l'adresse de l'issuer
+            try {
+                KeyPair.fromAccountId(issuerAddress);
+                System.out.println("✅ Adresse issuer validée : " + issuerAddress);
+            } catch (Exception e) {
+                throw new Exception("Adresse issuer invalide : " + issuerAddress, e);
+            }
+
+            KeyPair source = KeyPair.fromSecretSeed(secret);
+            Server server = new Server("https://horizon-testnet.stellar.org");
+
+            AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+
+            // Créer l'asset personnalisé
+            Asset asset;
+            if (assetCode.length() <= 4) {
+                asset = new AssetTypeCreditAlphaNum4(assetCode, issuerAddress);
+            } else {
+                asset = new AssetTypeCreditAlphaNum12(assetCode, issuerAddress);
+            }
+
+            ChangeTrustAsset trustAsset = ChangeTrustAsset.create(asset);
+            ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, limit).build();
+
+            Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                    .addOperation(operation)
+                    .setTimeout(180)
+                    .setBaseFee(Transaction.MIN_BASE_FEE)
+                    .build();
+
+            transaction.sign(source);
+            SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+            if (response.isSuccess()) {
+                return "✅ Trustline " + assetCode + " ajoutée avec succès";
+            } else {
+                return "❌ Erreur : " + response.getExtras().getResultCodes().toString();
+            }
+
+        } catch (Exception e) {
+            throw new Exception("Erreur lors de la création de la trustline personnalisée : " + e.getMessage(), e);
         }
     }
 

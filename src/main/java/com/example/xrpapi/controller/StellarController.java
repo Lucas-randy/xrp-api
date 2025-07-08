@@ -2,7 +2,11 @@ package com.example.xrpapi.controller;
 
 import com.example.xrpapi.entity.Wallet;
 import com.example.xrpapi.service.StellarService;
+import com.example.xrpapi.util.CryptoUtil;
 import org.springframework.web.bind.annotation.*;
+import org.stellar.sdk.KeyPair;
+
+import javax.crypto.SecretKey;
 
 @RestController
 @RequestMapping("/stellar")
@@ -90,6 +94,12 @@ public class StellarController {
         }
     }
 
+    /**
+     * ✅ Route POST : Trustline
+     * Exemple : curl.exe -X POST "http://localhost:8080/stellar/trustline/usdc?publicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL"
+     * ✅ Trustline USDC ajoutée avec succès (issuer: GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG)
+     * Vérification sur https://stellar.expert/explorer/testnet/account/GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG
+     */
     @PostMapping("/trustline/usdc")
     public String addTrustlineUSDC(@RequestParam String publicKey) {
         try {
@@ -97,6 +107,31 @@ public class StellarController {
         } catch (Exception e) {
             e.printStackTrace();
             return "❌ Erreur : " + e.getMessage();
+        }
+    }
+    @GetMapping("/test/encrypt-decrypt")
+    public String testEncryptDecrypt() {
+        try {
+            SecretKey key = CryptoUtil.getFixedTestKey();
+
+            KeyPair kp = KeyPair.random();
+            String realSeed = new String(kp.getSecretSeed());
+            System.out.println("✅ ORIGINAL SEED : " + realSeed);
+
+            String encrypted = CryptoUtil.encrypt(realSeed, key);
+            System.out.println("✅ ENCRYPTED : " + encrypted);
+
+            String decrypted = CryptoUtil.decrypt(encrypted, key);
+            System.out.println("✅ DECRYPTED : " + decrypted);
+
+            KeyPair kp2 = KeyPair.fromSecretSeed(decrypted);
+            System.out.println("✅ OK avec KeyPair : " + kp2.getAccountId());
+
+            return "Tout est OK ! Vérifie tes logs.";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Erreur : " + e.getMessage();
         }
     }
 

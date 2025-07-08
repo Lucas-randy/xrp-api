@@ -1,6 +1,7 @@
 package com.example.xrpapi.config;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ public class SecurityConfig {
                         .requestMatchers("/stellar/create").permitAll()
                         .requestMatchers("/stellar/**").permitAll()  // ✅ autorise explicitement /send
                         .requestMatchers("/stellar/secret/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/stellar/trustline/usdc").permitAll()
                         .anyRequest().permitAll()
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())   // ✅ Désactive httpBasic
