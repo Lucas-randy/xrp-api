@@ -237,7 +237,7 @@ public class StellarService {
     }
 
     //Méthode pour convertir XLM en USDC
-    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+    /*public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
         System.out.println("🔄 Début swap XLM ➜ USDC");
 
         // Déchiffre la clé secrète de l'envoyeur
@@ -254,7 +254,7 @@ public class StellarService {
         Account sourceAccountTx = new Account(source.getAccountId(), sourceAccount.getSequenceNumber());
 
         // Définit l'asset de destination (USDC sur testnet : Circle USDC)
-        Asset usdc = new AssetTypeCreditAlphaNum12(
+        Asset usdc = new AssetTypeCreditAlphaNum4(
                 "USDC",
                 "GA5ZSEU5GAC3UQJ5BJYJGBQYY3ZXKXNBHFOKRS67VJYNNZYDW7ZACBZK"  // Ex : Circle USDC Testnet issuer
         );
@@ -284,7 +284,7 @@ public class StellarService {
         return response.isSuccess()
                 ? "✅ Swap OK, Tx Hash: " + response.getHash()
                 : "❌ Swap KO : " + response.getExtras().getResultCodes();
-    }
+    }*/
 
     /*public String createTrustLineUSDC(String publicKey) throws Exception {
         System.out.println("➡️ Début createTrustLineUSDC");
@@ -500,7 +500,7 @@ public class StellarService {
     }
 
     // Méthode bonus pour créer une trustline avec un asset personnalisé
-    public String createCustomTrustLine(String publicKey, String assetCode, String issuerAddress, String limit) throws Exception {
+    /*public String createCustomTrustLine(String publicKey, String assetCode, String issuerAddress, String limit) throws Exception {
         System.out.println("➡️ Début createCustomTrustLine pour : " + publicKey);
 
         try {
@@ -549,7 +549,58 @@ public class StellarService {
         } catch (Exception e) {
             throw new Exception("Erreur lors de la création de la trustline personnalisée : " + e.getMessage(), e);
         }
+    }*/
+
+    /*
+    * Méthode pour swaper de XLM en USDC
+    * */
+    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+        System.out.println("➡️ Début swapXLMtoUSDC pour : " + fromPublicKey);
+
+        String secret = getSecret(fromPublicKey);
+        KeyPair source = KeyPair.fromSecretSeed(secret);
+
+        Server server = new Server("https://horizon-testnet.stellar.org");
+        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+
+        System.out.println("➡️ AssetCode: 'USDC', length: " + "USDC".trim().length());
+        System.out.println("➡️ Issuer: " + "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5");
+
+
+        Asset usdc = new AssetTypeCreditAlphaNum4(
+                "USDC",
+                "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+        );
+        System.out.println("➡️ Asset created OK: " + usdc);
+
+        PathPaymentStrictSendOperation operation = new PathPaymentStrictSendOperation.Builder(
+                new AssetTypeNative(), // XLM à envoyer
+                amount,
+                toPublicKey,           // destinataire correct
+                usdc,
+                "0.000001"
+        ).build();
+
+        Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                .addOperation(operation)
+                .setTimeout(180)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build();
+
+        transaction.sign(source);
+
+        SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+        if (response.isSuccess()) {
+            System.out.println("✅ SWAP réussi !");
+            return "✅ SWAP XLM ➜ USDC OK (Tx Hash : " + response.getHash() + ")";
+        } else {
+            System.out.println("❌ SWAP échoué : " + response.getExtras().getResultCodes());
+            return "❌ SWAP failed : " + response.getExtras().getResultCodes();
+        }
     }
+
+
 
 
 

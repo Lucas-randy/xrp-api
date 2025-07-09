@@ -20,7 +20,6 @@ public class StellarController {
 
     /*Route pour générer un wallet + créer une paire de clés + cryptage
     * curl.exe http://localhost:8080/stellar/create
-
      * */
     @GetMapping("/create")
     public String createAccount() throws Exception {
@@ -41,20 +40,23 @@ public class StellarController {
         return "🔑 Decrypted Seed for " + publicKey + " : " + seed;
     }
 
-    //Route pour connaître la balance
+    /*Route pour afficher la balance
+     * curl.exe "http://localhost:8080/stellar/balance/GA2SVBHMBZOVHHPFIRA4577CMKOYTL5OJWNEMDVEXXQ7KUTHVL7VTGE5"
+     * */
     @GetMapping("/balance/{publicKey}")
     public String checkBalance(@PathVariable String publicKey) throws Exception {
         return stellarService.checkBalance(publicKey);
     }
 
-    //Route pour afficher l'historique
+    /*Route pour afficher l'historique de la transaction
+     * curl.exe "http://localhost:8080/stellar/history/GA2SVBHMBZOVHHPFIRA4577CMKOYTL5OJWNEMDVEXXQ7KUTHVL7VTGE5"
+     * */
     @GetMapping("/history/{publicKey}")
     public String getPaymentHistory(@PathVariable String publicKey) throws Exception {
         return stellarService.getPaymentHistory(publicKey);
     }
 
-    /**
-     * ✅ Route POST : Envoi de XLM
+    /* ✅ Route POST : Envoi de XLM
      * Exemple : curl.exe -X POST "http://localhost:8080/stellar/send?fromPublicKey=GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG&
      * toPublicKey=GA2SVBHMBZOVHHPFIRA4577CMKOYTL5OJWNEMDVEXXQ7KUTHVL7VTGE5&amount=50"
      */
@@ -94,8 +96,7 @@ public class StellarController {
         }
     }
 
-    /**
-     * ✅ Route POST : Trustline
+    /* ✅ Route POST : Trustline
      * Exemple : curl.exe -X POST "http://localhost:8080/stellar/trustline/usdc?publicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL"
      * ✅ Trustline USDC ajoutée avec succès (issuer: GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG)
      * Vérification sur https://stellar.expert/explorer/testnet/account/GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG
@@ -109,33 +110,20 @@ public class StellarController {
             return "❌ Erreur : " + e.getMessage();
         }
     }
-    @GetMapping("/test/encrypt-decrypt")
-    public String testEncryptDecrypt() {
-        try {
-            SecretKey key = CryptoUtil.getFixedTestKey();
 
-            KeyPair kp = KeyPair.random();
-            String realSeed = new String(kp.getSecretSeed());
-            System.out.println("✅ ORIGINAL SEED : " + realSeed);
 
-            String encrypted = CryptoUtil.encrypt(realSeed, key);
-            System.out.println("✅ ENCRYPTED : " + encrypted);
-
-            String decrypted = CryptoUtil.decrypt(encrypted, key);
-            System.out.println("✅ DECRYPTED : " + decrypted);
-
-            KeyPair kp2 = KeyPair.fromSecretSeed(decrypted);
-            System.out.println("✅ OK avec KeyPair : " + kp2.getAccountId());
-
-            return "Tout est OK ! Vérifie tes logs.";
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Erreur : " + e.getMessage();
-        }
+    /* curl.exe -X POST "http://localhost:8080/stellar/swap?fromPublicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL&
+    toPublicKey=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&amount=5"
+    ✅ SWAP XLM ➜ USDC OK (Tx Hash : c54e4e44d6e9c335c07a9dfaa9bf0da141b5230e6845e461cb5067fa4c8acbad)
+     */
+    @PostMapping("/stellar/swap")
+    public String swapXLMtoUSDC(
+            @RequestParam("fromPublicKey") String fromPublicKey,
+            @RequestParam("toPublicKey") String toPublicKey,
+            @RequestParam("amount") String amount
+    ) throws Exception {
+        return stellarService.swapXLMtoUSDC(fromPublicKey, toPublicKey, amount);
     }
-
-
 
 }
 
