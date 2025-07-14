@@ -2,11 +2,8 @@ package com.example.xrpapi.controller;
 
 import com.example.xrpapi.entity.Wallet;
 import com.example.xrpapi.service.StellarService;
-import com.example.xrpapi.util.CryptoUtil;
 import org.springframework.web.bind.annotation.*;
-import org.stellar.sdk.KeyPair;
 
-import javax.crypto.SecretKey;
 
 @RestController
 @RequestMapping("/stellar")
@@ -78,6 +75,10 @@ public class StellarController {
         }
     }
 
+    /* curl.exe -X POST "http://localhost:8080/stellar/swap?fromPublicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL&
+    toPublicKey=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&amount=20"
+    ✅ SWAP XLM ➜ USDC OK (Tx Hash : c54e4e44d6e9c335c07a9dfaa9bf0da141b5230e6845e461cb5067fa4c8acbad)
+    */
     @PostMapping("/swap")
     public String swapXLMToUSDC(
             @RequestParam String fromPublicKey,
@@ -99,7 +100,7 @@ public class StellarController {
     /* ✅ Route POST : Trustline
      * Exemple : curl.exe -X POST "http://localhost:8080/stellar/trustline/usdc?publicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL"
      * ✅ Trustline USDC ajoutée avec succès (issuer: GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG)
-     * Vérification sur https://stellar.expert/explorer/testnet/account/GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG
+     * Vérification sur https://stellar.expert/explorer/testnet/account/GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL
      */
     @PostMapping("/trustline/usdc")
     public String addTrustlineUSDC(@RequestParam String publicKey) {
@@ -111,18 +112,32 @@ public class StellarController {
         }
     }
 
-
-    /* curl.exe -X POST "http://localhost:8080/stellar/swap?fromPublicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL&
-    toPublicKey=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5&amount=5"
+    /* curl.exe -X POST "http://localhost:8080/swap-path?fromPublicKey=GC77VP2A7FIK2VUCOKRL7KU43PIBYQX4WRH2QOIKLXEFJSFNU7GYT3DL&toPublicKey=GBT4MX7QU2DB7CFPCUQZ5GKCVO4EQ3U5IL3EXPGRNF2XZUFD4SBDHHDG&amountXLM=1&amountUSDC=0.000001"
     ✅ SWAP XLM ➜ USDC OK (Tx Hash : c54e4e44d6e9c335c07a9dfaa9bf0da141b5230e6845e461cb5067fa4c8acbad)
-     */
-    @PostMapping("/stellar/swap")
+    */
+    @PostMapping("/swap-path")
     public String swapXLMtoUSDC(
-            @RequestParam("fromPublicKey") String fromPublicKey,
-            @RequestParam("toPublicKey") String toPublicKey,
-            @RequestParam("amount") String amount
-    ) throws Exception {
-        return stellarService.swapXLMtoUSDC(fromPublicKey, toPublicKey, amount);
+            @RequestParam String fromPublicKey,
+            @RequestParam String toPublicKey,
+            @RequestParam String amountXLM,
+            @RequestParam String amountUSDC) throws Exception {
+
+        return stellarService.swapXLMtoUSDC(fromPublicKey, toPublicKey, amountXLM, amountUSDC);
+    }
+
+    @PostMapping("/offer")
+    public String createSellOfferUSDC(
+            @RequestParam("publicKey") String publicKey,
+            @RequestParam("amountXLM") String amountXLM,
+            @RequestParam("price") String price) throws Exception {
+        return stellarService.createSellOfferUSDC(publicKey, amountXLM, price);
+    }
+
+    @PostMapping("/issue")
+    public String issueUSDC(@RequestParam("issuerPublicKey") String issuerPublicKey,
+                            @RequestParam("toPublicKey") String toPublicKey,
+                            @RequestParam("amount") String amount) throws Exception {
+        return stellarService.issueUSDC(issuerPublicKey, toPublicKey, amount);
     }
 
 }

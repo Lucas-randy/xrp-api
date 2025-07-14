@@ -5,10 +5,6 @@ import com.example.xrpapi.entity.Wallet;
 import com.example.xrpapi.repository.WalletRepository;
 import org.stellar.sdk.*;
 
-import org.stellar.sdk.responses.*;
-import org.stellar.sdk.requests.*;
-import org.stellar.sdk.xdr.MemoType;
-
 
 import javax.crypto.SecretKey;
 import okhttp3.Request;
@@ -23,9 +19,7 @@ import org.stellar.sdk.ChangeTrustAsset;
 import org.stellar.sdk.responses.AccountResponse;
 
 import org.stellar.sdk.responses.SubmitTransactionResponse;
-import org.stellar.sdk.AssetTypeCreditAlphaNum;
 
-import org.stellar.sdk.requests.PaymentsRequestBuilder;
 import org.stellar.sdk.responses.operations.OperationResponse;
 import org.stellar.sdk.responses.operations.PaymentOperationResponse;
 
@@ -64,20 +58,6 @@ public class StellarService {
         }
     }
 
-    /*public Wallet createAndStoreWallet() throws Exception {
-        KeyPair keyPair = createKeyPair();
-        String publicKey = keyPair.getAccountId();
-        String secretSeed = new String(keyPair.getSecretSeed());
-
-        String encrypted = CryptoUtil.encrypt(secretSeed, encryptionKey);
-
-        Wallet wallet = new Wallet(publicKey, encrypted);
-        walletRepository.save(wallet);
-
-        fundTestAccount(publicKey);
-
-        return wallet;
-    }*/
     public Wallet createAndStoreWallet() throws Exception {
         // Génère une nouvelle paire de clés
         KeyPair keyPair = KeyPair.random();
@@ -111,35 +91,6 @@ public class StellarService {
         return CryptoUtil.decrypt(wallet.getEncryptedSecret(), encryptionKey);
     }
 
-   /* public String sendXLM(String fromPublicKey, String toPublicKey, String amount) throws Exception {
-        KeyPair source = KeyPair.fromSecretSeed(getSecret(fromPublicKey)); // Déchiffre d'abord
-        KeyPair destination = KeyPair.fromAccountId(toPublicKey);
-
-        Server server = new Server("https://horizon-testnet.stellar.org");
-
-        // Charger compte source
-        AccountResponse sourceAccountResponse = server.accounts().account(source.getAccountId());
-
-        // Adapter : créer un Account pour le TransactionBuilder
-        Account sourceAccount = new Account(source.getAccountId(), sourceAccountResponse.getSequenceNumber());
-
-        Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
-                .addOperation(new PaymentOperation.Builder(destination.getAccountId(), new AssetTypeNative(), amount).build())
-                .setTimeout(180)
-                .setBaseFee(Transaction.MIN_BASE_FEE)
-                .build();
-
-        transaction.sign(source); // Signature locale
-
-        // Envoyer à Horizon
-        SubmitTransactionResponse response = server.submitTransaction(transaction);
-        System.out.println("🔔 Horizon Response : isSuccess = " + response.isSuccess());
-        System.out.println("🔔 Horizon Hash : " + response.getHash());
-        System.out.println("🔔 Horizon Extras : " + response.getExtras());
-
-        return response.isSuccess() ? "✅ Tx Hash: " + response.getHash() : response.getExtras().getResultCodes().toString();
-    }*/
-
     //Générer une clé AES pour crypter la seed
     public SecretKey generateAesKey() throws Exception {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -157,7 +108,7 @@ public class StellarService {
         return CryptoUtil.decrypt(encryptedSeed, encryptionKey);
     }
 
-    //Méthode pour vérifier le solde
+    /*Méthode pour vérifier le solde*/
     public String checkBalance(String publicKey) throws Exception {
         Server server = new Server("https://horizon-testnet.stellar.org");
         AccountResponse account = server.accounts().account(publicKey);
@@ -171,6 +122,7 @@ public class StellarService {
         return sb.toString();
     }
 
+    /*Méthode pour envoyer XLM*/
     public String sendXLM(String fromPublicKey, String toPublicKey, String amount) throws Exception {
         System.out.println("🔵 Début de sendXLM");
         try {
@@ -236,109 +188,7 @@ public class StellarService {
         return history.toString();
     }
 
-    //Méthode pour convertir XLM en USDC
-    /*public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
-        System.out.println("🔄 Début swap XLM ➜ USDC");
-
-        // Déchiffre la clé secrète de l'envoyeur
-        KeyPair source = KeyPair.fromSecretSeed(getSecret(fromPublicKey));
-        KeyPair destination = KeyPair.fromAccountId(toPublicKey);
-
-        Server server = new Server("https://horizon-testnet.stellar.org");
-
-        // Vérifie que le compte destination existe (optionnel)
-        server.accounts().account(destination.getAccountId());
-
-        // Charge le compte source
-        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
-        Account sourceAccountTx = new Account(source.getAccountId(), sourceAccount.getSequenceNumber());
-
-        // Définit l'asset de destination (USDC sur testnet : Circle USDC)
-        Asset usdc = new AssetTypeCreditAlphaNum4(
-                "USDC",
-                "GA5ZSEU5GAC3UQJ5BJYJGBQYY3ZXKXNBHFOKRS67VJYNNZYDW7ZACBZK"  // Ex : Circle USDC Testnet issuer
-        );
-
-        // Crée la transaction PathPaymentStrictSend
-        Transaction transaction = new Transaction.Builder(sourceAccountTx, Network.TESTNET)
-                .addOperation(new PathPaymentStrictSendOperation.Builder(
-                        new AssetTypeNative(), // Envoie XLM
-                        amount,
-                        destination.getAccountId(),
-                        usdc,
-                        "0.01" // minAmount : peut être ajusté
-                ).build())
-                .setTimeout(180)
-                .setBaseFee(Transaction.MIN_BASE_FEE)
-                .build();
-
-        // Signe localement
-        transaction.sign(source);
-
-        // Envoie à Horizon
-        SubmitTransactionResponse response = server.submitTransaction(transaction);
-
-        System.out.println("🔄 Swap Submit Response: isSuccess = " + response.isSuccess());
-        System.out.println("🔄 Hash : " + response.getHash());
-
-        return response.isSuccess()
-                ? "✅ Swap OK, Tx Hash: " + response.getHash()
-                : "❌ Swap KO : " + response.getExtras().getResultCodes();
-    }*/
-
-    /*public String createTrustLineUSDC(String publicKey) throws Exception {
-        System.out.println("➡️ Début createTrustLineUSDC");
-
-        // Déchiffrer le seed
-        String secret = getSecret(publicKey);
-
-
-        System.out.println("🔑 Decrypted seed : " + secret);
-
-        // Validation explicite
-        try {
-            KeyPair.fromSecretSeed(secret); // Lance une exception si la seed est invalide
-        } catch (Exception e) {
-            throw new Exception("Seed corrompue : " + secret + " (longueur : " + secret.length() + ")", e);
-        }
-
-        KeyPair source = KeyPair.fromSecretSeed(secret);
-
-        Server server = new Server("https://horizon-testnet.stellar.org");
-
-        // Charger le compte
-        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
-
-        // Définir l'asset USDC (exemple Circle)
-        AssetTypeCreditAlphaNum4 usdc = new AssetTypeCreditAlphaNum4(
-                "USDC",
-                "GA5ZSEU5GAC3UQJ5BJYJGBQYY3ZXKXNBHFOKRS67VJYNNZYDW7ZACBZK"
-        );
-
-        ChangeTrustAsset trustAsset = ChangeTrustAsset.create(usdc);
-
-        ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, "10000").build();
-
-        Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
-                .addOperation(operation)
-                .setTimeout(180)
-                .setBaseFee(Transaction.MIN_BASE_FEE)
-                .build();
-
-        transaction.sign(source);
-
-        SubmitTransactionResponse response = server.submitTransaction(transaction);
-
-        if (response.isSuccess()) {
-            System.out.println("✅ Trustline ajoutée !");
-            return "✅ Trustline USDC ajoutée";
-        } else {
-            System.out.println("❌ Horizon response : " + response.getExtras().getResultCodes());
-            return "❌ Horizon response : " + response.getExtras().getResultCodes();
-        }
-    }*/
-
-    // Méthode de test pour diagnostiquer le problème
+    /*Méthode de test pour diagnostiquer le problème*/
     public String testDecryption(String publicKey) {
         try {
             Wallet wallet = walletRepository.findById(publicKey)
@@ -358,7 +208,9 @@ public class StellarService {
         }
     }
 
-    // Méthode pour re-chiffrer une seed si nécessaire
+    /*
+    Méthode pour re-chiffrer une seed si nécessaire
+     */
     public String rechiffreSeed(String publicKey, String newSeed) {
         try {
             // Valider la nouvelle seed
@@ -460,125 +312,91 @@ public class StellarService {
         }
     }
 
+    //Méthode pour créer un Issuer
+    public Wallet createIssuer() throws Exception {
+        KeyPair issuerKeyPair = KeyPair.random();
+        String publicKey = issuerKeyPair.getAccountId();
+        String secretSeed = new String(issuerKeyPair.getSecretSeed());
 
+        String encrypted = CryptoUtil.encrypt(secretSeed, encryptionKey);
 
-    // Méthode alternative avec un asset simple pour tester
-    public String createSimpleTrustLine(String publicKey) throws Exception {
-        System.out.println("➡️ Test avec un asset simple");
+        Wallet issuerWallet = new Wallet(publicKey, encrypted);
+        walletRepository.save(issuerWallet);
 
-        try {
-            String secret = getSecret(publicKey);
-            KeyPair source = KeyPair.fromSecretSeed(secret);
-            Server server = new Server("https://horizon-testnet.stellar.org");
-            AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+        // Fund via Friendbot testnet :
+        fundTestAccount(publicKey);
 
-            // Créer un asset de test simple avec une adresse d'issuer valide
-            String testIssuer = "GCKFBEIYTKP5RDBQMU2TQCQHD6TNQTP2JXGMH5UQNXZP6GKXQBGBTB4Q";
-            AssetTypeCreditAlphaNum4 testAsset = new AssetTypeCreditAlphaNum4("TEST", testIssuer);
+        System.out.println("✅ Issuer créé : " + publicKey);
+        return issuerWallet;
+    }
 
-            ChangeTrustAsset trustAsset = ChangeTrustAsset.create(testAsset);
-            ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, "1000").build();
+    //Issuer qui va dire : envoie de X USDC à XLM dans le même wallet
+    public String issueUSDC(String issuerPublicKey, String toPublicKey, String amount) throws Exception {
+        System.out.println("➡️ Début issueUSDC");
 
-            Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
-                    .addOperation(operation)
-                    .setTimeout(180)
-                    .setBaseFee(Transaction.MIN_BASE_FEE)
-                    .build();
+        String issuerSecret = getSecret(issuerPublicKey);
+        KeyPair issuerKeyPair = KeyPair.fromSecretSeed(issuerSecret);
 
-            transaction.sign(source);
-            SubmitTransactionResponse response = server.submitTransaction(transaction);
+        KeyPair destination = KeyPair.fromAccountId(toPublicKey);
 
-            if (response.isSuccess()) {
-                return "✅ Trustline TEST ajoutée avec succès";
-            } else {
-                return "❌ Erreur : " + response.getExtras().getResultCodes();
-            }
+        Server server = new Server("https://horizon-testnet.stellar.org");
+        AccountResponse issuerAccount = server.accounts().account(issuerKeyPair.getAccountId());
 
-        } catch (Exception e) {
-            throw new Exception("Erreur trustline simple : " + e.getMessage(), e);
+        // Créer l'Asset USDC
+        AssetTypeCreditAlphaNum4 usdc = new AssetTypeCreditAlphaNum4("USDC", issuerKeyPair.getAccountId());
+
+        // Créer PaymentOperation
+        PaymentOperation payment = new PaymentOperation.Builder(
+                destination.getAccountId(),
+                usdc,
+                amount
+        ).build();
+
+        Transaction transaction = new Transaction.Builder(issuerAccount, Network.TESTNET)
+                .addOperation(payment)
+                .setTimeout(180)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build();
+
+        transaction.sign(issuerKeyPair);
+        SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+        if (response.isSuccess()) {
+            System.out.println("✅ USDC émis : TxHash = " + response.getHash());
+            return "✅ USDC émis : " + amount + " USDC ➜ " + toPublicKey + " (Tx: " + response.getHash() + ")";
+        } else {
+            System.out.println("❌ Erreur issueUSDC : " + response.getExtras().getResultCodes());
+            return "❌ Erreur issueUSDC : " + response.getExtras().getResultCodes();
         }
     }
 
-    // Méthode bonus pour créer une trustline avec un asset personnalisé
-    /*public String createCustomTrustLine(String publicKey, String assetCode, String issuerAddress, String limit) throws Exception {
-        System.out.println("➡️ Début createCustomTrustLine pour : " + publicKey);
-
-        try {
-            String secret = getSecret(publicKey);
-            validateStellarSeed(secret);
-
-            // Valider l'adresse de l'issuer
-            try {
-                KeyPair.fromAccountId(issuerAddress);
-                System.out.println("✅ Adresse issuer validée : " + issuerAddress);
-            } catch (Exception e) {
-                throw new Exception("Adresse issuer invalide : " + issuerAddress, e);
-            }
-
-            KeyPair source = KeyPair.fromSecretSeed(secret);
-            Server server = new Server("https://horizon-testnet.stellar.org");
-
-            AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
-
-            // Créer l'asset personnalisé
-            Asset asset;
-            if (assetCode.length() <= 4) {
-                asset = new AssetTypeCreditAlphaNum4(assetCode, issuerAddress);
-            } else {
-                asset = new AssetTypeCreditAlphaNum12(assetCode, issuerAddress);
-            }
-
-            ChangeTrustAsset trustAsset = ChangeTrustAsset.create(asset);
-            ChangeTrustOperation operation = new ChangeTrustOperation.Builder(trustAsset, limit).build();
-
-            Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
-                    .addOperation(operation)
-                    .setTimeout(180)
-                    .setBaseFee(Transaction.MIN_BASE_FEE)
-                    .build();
-
-            transaction.sign(source);
-            SubmitTransactionResponse response = server.submitTransaction(transaction);
-
-            if (response.isSuccess()) {
-                return "✅ Trustline " + assetCode + " ajoutée avec succès";
-            } else {
-                return "❌ Erreur : " + response.getExtras().getResultCodes().toString();
-            }
-
-        } catch (Exception e) {
-            throw new Exception("Erreur lors de la création de la trustline personnalisée : " + e.getMessage(), e);
-        }
-    }*/
 
     /*
     * Méthode pour swaper de XLM en USDC
     * */
-    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amountXLM, String amountUSDC) throws Exception {
         System.out.println("➡️ Début swapXLMtoUSDC pour : " + fromPublicKey);
 
+        // Récupérer le secret chiffré => le déchiffrer
         String secret = getSecret(fromPublicKey);
         KeyPair source = KeyPair.fromSecretSeed(secret);
 
         Server server = new Server("https://horizon-testnet.stellar.org");
         AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
 
-        System.out.println("➡️ AssetCode: 'USDC', length: " + "USDC".trim().length());
-        System.out.println("➡️ Issuer: " + "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5");
-
-
+        // Définir l'asset USDC
         Asset usdc = new AssetTypeCreditAlphaNum4(
                 "USDC",
                 "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
         );
-        System.out.println("➡️ Asset created OK: " + usdc);
 
+        // Construire l'opération PathPaymentStrictSend
         PathPaymentStrictSendOperation operation = new PathPaymentStrictSendOperation.Builder(
-                new AssetTypeNative(), // XLM à envoyer
-                amount,
-                toPublicKey,           // destinataire correct
+                new AssetTypeNative(), // Source: XLM
+                amountXLM,
+                toPublicKey,
                 usdc,
-                "0.000001"
+                amountUSDC
         ).build();
 
         Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
@@ -592,16 +410,50 @@ public class StellarService {
         SubmitTransactionResponse response = server.submitTransaction(transaction);
 
         if (response.isSuccess()) {
-            System.out.println("✅ SWAP réussi !");
             return "✅ SWAP XLM ➜ USDC OK (Tx Hash : " + response.getHash() + ")";
         } else {
-            System.out.println("❌ SWAP échoué : " + response.getExtras().getResultCodes());
             return "❌ SWAP failed : " + response.getExtras().getResultCodes();
         }
     }
 
+    public String swapXLMtoUSDC(String fromPublicKey, String toPublicKey, String amount) throws Exception {
+        System.out.println("➡️ Début swapXLMtoUSDC (version courte) pour : " + fromPublicKey);
+
+        String secret = getSecret(fromPublicKey); // Tu récupères le secret depuis ton stockage interne
+        return swapXLMtoUSDC(fromPublicKey, toPublicKey, amount, "0.000001");
+    }
 
 
+    public String createSellOfferUSDC(String publicKey, String amountXLM, String price) throws Exception {
+        String secret = getSecret(publicKey);
+        KeyPair source = KeyPair.fromSecretSeed(secret);
 
+        Server server = new Server("https://horizon-testnet.stellar.org");
+        AccountResponse sourceAccount = server.accounts().account(source.getAccountId());
+
+        Asset selling = new AssetTypeCreditAlphaNum4("USDC", "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5");
+        Asset buying = new AssetTypeNative(); // XLM
+
+        ManageSellOfferOperation offerOperation = new ManageSellOfferOperation.Builder(
+                selling, buying, amountXLM, price
+        ).build();
+
+        Transaction transaction = new Transaction.Builder(sourceAccount, Network.TESTNET)
+                .addOperation(offerOperation)
+                .setTimeout(180)
+                .setBaseFee(Transaction.MIN_BASE_FEE)
+                .build();
+
+        transaction.sign(source);
+        SubmitTransactionResponse response = server.submitTransaction(transaction);
+
+        if (response.isSuccess()) {
+            System.out.println("✅ Offre placée !");
+            return "✅ Offer created! Hash: " + response.getHash();
+        } else {
+            System.out.println("❌ Erreur create offer : " + response.getExtras().getResultCodes());
+            return "❌ Failed: " + response.getExtras().getResultCodes();
+        }
+    }
 
 }
